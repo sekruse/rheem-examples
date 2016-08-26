@@ -64,8 +64,6 @@ object WordCount {
       println("Usage: <main class> <plugin(,plugin)*> <input file> [<words per line a..b>]")
       sys.exit(1)
     }
-
-    // Parse parameters.
     val plugins = parsePlugins(args(0))
     val inputFile = args(1)
     val wordsPerLine = if (args.length >= 3) parseWordsPerLine(args(2)) else null
@@ -74,12 +72,13 @@ object WordCount {
     val configuration = new Configuration
     val wordCount = new WordCount(configuration, plugins: _*)
 
+    // Run the wordcount.
     val words = wordCount(inputFile, wordsPerLine)
 
     // Print results.
     println(s"Found ${words.size} words:")
     words.take(10).foreach(wc => println(s"${wc._2}x ${wc._1}"))
-    if (words.size > 10) print(s"${words.size - 10} more...")
+    if (words.size > 10) println(s"${words.size - 10} more...")
   }
 
   /**

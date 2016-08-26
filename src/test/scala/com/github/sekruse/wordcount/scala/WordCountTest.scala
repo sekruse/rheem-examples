@@ -1,7 +1,7 @@
 package com.github.sekruse.wordcount.scala
 
 import org.junit.{Assert, Test}
-import org.qcri.rheem.core.api
+import org.qcri.rheem.core.api.Configuration
 import org.qcri.rheem.core.plugin.Plugin
 import org.qcri.rheem.core.util.ReflectionUtils
 import org.qcri.rheem.java.Java
@@ -13,16 +13,16 @@ import org.qcri.rheem.spark.Spark
 class WordCountTest {
 
   @Test
-  def shouldWorkWithJava: Unit = shouldWorkWith(Java.basicPlugin)
+  def shouldWorkWithJava(): Unit = shouldWorkWith(Java.basicPlugin)
 
   @Test
-  def shouldWorkWithSpark: Unit = shouldWorkWith(Spark.basicPlugin)
+  def shouldWorkWithSpark(): Unit = shouldWorkWith(Spark.basicPlugin)
 
   @Test
-  def shouldWorkWithJavaAndSpark: Unit = shouldWorkWith(Java.basicPlugin, Spark.basicPlugin)
+  def shouldWorkWithJavaAndSpark(): Unit = shouldWorkWith(Java.basicPlugin, Spark.basicPlugin)
 
   def shouldWorkWith(plugins: Plugin*): Unit = {
-    val wordCount = new WordCount(new api.Configuration, plugins: _*)
+    val wordCount = new WordCount(new Configuration, plugins: _*)
     val inputUrl = ReflectionUtils.getResourceURL("lorem-ipsum.txt")
 
     val wordFrequencies = wordCount(inputUrl.toString).toMap
@@ -33,7 +33,7 @@ class WordCountTest {
   }
 
   @Test
-  def shouldWorkViaMainMethod1: Unit = {
+  def shouldWorkViaMainMethod1(): Unit = {
     val args = Array(
       "java,spark",
       ReflectionUtils.getResourceURL("lorem-ipsum.txt").toString,
@@ -43,7 +43,7 @@ class WordCountTest {
   }
 
   @Test
-  def shouldWorkViaMainMethod2: Unit = {
+  def shouldWorkViaMainMethod2(): Unit = {
     val args = Array(
       "java,spark",
       ReflectionUtils.getResourceURL("lorem-ipsum.txt").toString
