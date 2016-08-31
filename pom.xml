@@ -13,6 +13,7 @@
 
     <modules>
       <module>wordcount</module>
+      <module>sindy</module>
       <module>pagerank</module>
     </modules>
 
