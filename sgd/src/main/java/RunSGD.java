@@ -24,8 +24,6 @@ public class RunSGD {
     static String relativePath = "sgd/src/main/resources/adult.zeros";
     static int datasetSize  = 100827;
     static int features = 123;
-    static boolean sparse = true;
-    static boolean binary = true; //this applies only for SVM, to transform the 0 to -1 during the transform
 
     //these are for SGD/mini run to convergence, put < 1 for batch GD
     static int sampleSize = 6;
@@ -40,11 +38,9 @@ public class RunSGD {
             relativePath = args[0];
             datasetSize = Integer.parseInt(args[1]);
             features = Integer.parseInt(args[2]);
-            sparse = Boolean.parseBoolean(args[3]);
-            binary = Boolean.parseBoolean(args[4]);
-            max_iterations = Integer.parseInt(args[5]);
-            accuracy = Double.parseDouble(args[6]);
-            sampleSize = Integer.parseInt(args[7]);
+            max_iterations = Integer.parseInt(args[3]);
+            accuracy = Double.parseDouble(args[4]);
+            sampleSize = Integer.parseInt(args[5]);
         }
         else {
             System.out.println("Loading default values");
@@ -52,8 +48,7 @@ public class RunSGD {
 
         String file = new File(relativePath).getAbsoluteFile().toURI().toURL().toString();
 
-        System.out.println("sparse:" + sparse);
-        System.out.println("#iterations:" + max_iterations);
+        System.out.println("max #iterations:" + max_iterations);
         System.out.println("accuracy:" + accuracy);
 
         new RunSGD().execute(file, features);
@@ -64,12 +59,12 @@ public class RunSGD {
         RheemContext rheemContext = new RheemContext().with(Java.basicPlugin()).with(Spark.basicPlugin());
         JavaPlanBuilder javaPlanBuilder = new JavaPlanBuilder(rheemContext);
 
-        List<double[]> broadcast = Arrays.asList(new double[features]);
-        final DataQuantaBuilder<?, double[]> weightsBuilder = javaPlanBuilder.loadCollection(broadcast).withName("init weights");
+        List<double[]> weights = Arrays.asList(new double[features]);
+        final DataQuantaBuilder<?, double[]> weightsBuilder = javaPlanBuilder.loadCollection(weights).withName("init weights");
 
-        final DataQuantaBuilder<?, SparseVector> transformBuilder = javaPlanBuilder
+        final DataQuantaBuilder<?, double[]> transformBuilder = javaPlanBuilder
                 .readTextFile(fileName).withName("source")
-                .map(new Transform()).withName("transform");
+                .map(new Transform(features)).withName("transform");
 
         Collection<double[]> results  =
                 weightsBuilder.doWhile(new LoopCondition(accuracy, max_iterations), w -> {
@@ -77,10 +72,10 @@ public class RunSGD {
             DataQuantaBuilder<?, double[]> newWeightsDataset = transformBuilder
                     .sample(sampleSize)
                     .map(new ComputeLogisticGradient()).withBroadcast(w, "weights").withName("compute")
-                    .reduce(new Reduce()).withName("reduce")
+                    .reduce(new Sum()).withName("reduce")
                     .map(new WeightsUpdate()).withBroadcast(w, "weights").withName("update");
 
-            DataQuantaBuilder<?, Tuple2<Double, Double>> convergenceDataset = newWeightsDataset.map(new Converge()).withBroadcast(w, "weights");
+            DataQuantaBuilder<?, Tuple2<Double, Double>> convergenceDataset = newWeightsDataset.map(new ComputeNorm()).withBroadcast(w, "weights");
 
             return new Tuple<>(newWeightsDataset.filter(w1 -> true), convergenceDataset);
         }).collect();
@@ -90,41 +85,45 @@ public class RunSGD {
     }
 }
 
-class Transform implements FunctionDescriptor.SerializableFunction<String, SparseVector> {
+class Transform implements FunctionDescriptor.SerializableFunction<String, double[]> {
+
+    int features;
+
+    public Transform (int features) {
+        this.features = features;
+    }
 
     @Override
-    public SparseVector apply(String line) {
+    public double[] apply(String line) {
         String[] pointStr = line.split(" ");
-        int[] indices = new int[pointStr.length - 1];
-        double[] values = new double[pointStr.length - 1];
-        double label = Double.parseDouble(pointStr[0]);
+        double[] point = new double[features+1];
+        point[0] = Double.parseDouble(pointStr[0]);
         for (int i = 1; i < pointStr.length; i++) {
             if (pointStr[i].equals("")) {
                 continue;
             }
             String kv[] = pointStr[i].split(":", 2);
-            indices[i - 1] = Integer.parseInt(kv[0]);
-            values[i - 1] = Double.parseDouble(kv[1]);
+            point[Integer.parseInt(kv[0])-1] = Double.parseDouble(kv[1]);
         }
-        return new SparseVector(label, indices, values);
+        return point;
     }
 }
 
-class ComputeLogisticGradient implements FunctionDescriptor.ExtendedSerializableFunction<SparseVector, double[]> {
+class ComputeLogisticGradient implements FunctionDescriptor.ExtendedSerializableFunction<double[], double[]> {
 
     double[] weights;
 
     @Override
-    public double[] apply(SparseVector point) {
-        double[] gradient = new double[weights.length + 1];
+    public double[] apply(double[] point) {
+        double[] gradient = new double[point.length];
         double dot = 0;
-        for (int i = 0; i < point.size(); i++)
-            dot += weights[point.getIndices()[i] - 1] * point.getValues()[i];
+        for (int j = 0; j < weights.length; j++)
+            dot += weights[j] * point[j + 1];
 
-        for (int i = 0; i < point.size(); i++)
-            gradient[point.getIndices()[i]] = ((1 / (1 + Math.exp(-1 * dot))) - point.getLabel()) * point.getValues()[i];
+        for (int j = 0; j < weights.length; j++)
+            gradient[j + 1] = ((1 / (1 + Math.exp(-1 * dot))) - point[0]) * point[j + 1];
 
-        gradient[0] = 1; //counter required in the update
+        gradient[0] = 1; //counter for the step size required in the update
 
         return gradient;
     }
@@ -135,7 +134,7 @@ class ComputeLogisticGradient implements FunctionDescriptor.ExtendedSerializable
     }
 }
 
-class Reduce implements FunctionDescriptor.SerializableBinaryOperator<double[]> {
+class Sum implements FunctionDescriptor.SerializableBinaryOperator<double[]> {
 
     @Override
     public double[] apply(double[] o, double[] o2) {
@@ -176,8 +175,7 @@ class WeightsUpdate implements FunctionDescriptor.ExtendedSerializableFunction<d
     public double[] apply(double[] input) {
 
         double count = input[0];
-//        double alpha = (stepSize / iteration);
-        double alpha = (stepSize / Math.sqrt(current_iteration+1));
+        double alpha = (stepSize / (current_iteration+1));
         double[] newWeights = new double[weights.length];
         for (int j = 0; j < weights.length; j++) {
             newWeights[j] = (1 - alpha * regulizer) * weights[j] - alpha * (1.0 / count) * input[j + 1];
@@ -192,10 +190,9 @@ class WeightsUpdate implements FunctionDescriptor.ExtendedSerializableFunction<d
     }
 }
 
-class Converge implements FunctionDescriptor.ExtendedSerializableFunction<double[], Tuple2<Double, Double>> {
+class ComputeNorm implements FunctionDescriptor.ExtendedSerializableFunction<double[], Tuple2<Double, Double>> {
 
     double[] previousWeights;
-    int current_iteration;
 
     @Override
     public Tuple2<Double, Double> apply(double[] weights) {
@@ -213,7 +210,6 @@ class Converge implements FunctionDescriptor.ExtendedSerializableFunction<double
     @Override
     public void open(ExecutionContext executionContext) {
         this.previousWeights = (double[]) executionContext.getBroadcast("weights").iterator().next();
-        this.current_iteration = executionContext.getCurrentIteration();
     }
 }
 
