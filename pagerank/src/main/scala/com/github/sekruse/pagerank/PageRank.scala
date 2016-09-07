@@ -58,7 +58,6 @@ class PageRank(configuration: Configuration, plugins: Plugin*) {
 
     // Make the page ranks readable.
     pageRanks
-      .map(identity).withName("Hotfix")
       .join[VertexId, Long](_.field0, vertexIds, _.field0).withName("Join page ranks with vertex IDs")
       .map(joinTuple => (joinTuple.field1.field1, joinTuple.field0.field1)).withName("Make page ranks readable")
       .collect()
