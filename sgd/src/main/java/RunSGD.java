@@ -4,10 +4,12 @@ import org.qcri.rheem.basic.data.Tuple2;
 import org.qcri.rheem.core.api.RheemContext;
 import org.qcri.rheem.core.function.ExecutionContext;
 import org.qcri.rheem.core.function.FunctionDescriptor;
+import org.qcri.rheem.core.types.DataSetType;
 import org.qcri.rheem.core.util.RheemCollections;
 import org.qcri.rheem.core.util.Tuple;
 import org.qcri.rheem.java.Java;
 import org.qcri.rheem.spark.Spark;
+import org.qcri.rheem.spark.operators.SparkBernoulliSampleOperator;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -16,12 +18,12 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Created by zoi on 8/27/16.
+ * This class executes a stochastic gradient descent optimization on Rheem.
  */
 public class RunSGD {
 
-
-    static String relativePath = "sgd/src/main/resources/adult.zeros";
+    // Default parameters.
+    static String relativePath = "src/main/resources/adult.zeros";
     static int datasetSize  = 100827;
     static int features = 123;
 
@@ -43,6 +45,7 @@ public class RunSGD {
             sampleSize = Integer.parseInt(args[5]);
         }
         else {
+            System.out.println("Usage: java <main class> [<dataset path> <dataset size> <#features> <max iterations> <accuracy> <sample size>]");
             System.out.println("Loading default values");
         }
 
@@ -71,13 +74,15 @@ public class RunSGD {
 
             DataQuantaBuilder<?, double[]> newWeightsDataset = transformBuilder
                     .sample(sampleSize)
+//                    .<double[]>customOperator(new SparkBernoulliSampleOperator<>(sampleSize, datasetSize, DataSetType.createDefault(double[].class)))
+//                    .withOutputClass(double[].class)
                     .map(new ComputeLogisticGradient()).withBroadcast(w, "weights").withName("compute")
                     .reduce(new Sum()).withName("reduce")
                     .map(new WeightsUpdate()).withBroadcast(w, "weights").withName("update");
 
             DataQuantaBuilder<?, Tuple2<Double, Double>> convergenceDataset = newWeightsDataset.map(new ComputeNorm()).withBroadcast(w, "weights");
 
-            return new Tuple<>(newWeightsDataset.filter(w1 -> true), convergenceDataset);
+            return new Tuple<>(newWeightsDataset, convergenceDataset);
         }).collect();
 
         System.out.println("Output weights:" + Arrays.toString(RheemCollections.getSingle(results)));

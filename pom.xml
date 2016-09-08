@@ -12,9 +12,9 @@
     <packaging>pom</packaging>
 
     <modules>
-      <module>wordcount</module>
-      <module>sindy</module>
-      <module>pagerank</module>
+        <module>wordcount</module>
+        <module>sindy</module>
+        <module>pagerank</module>
         <module>sgd</module>
     </modules>
 
