@@ -31,4 +31,17 @@
         <hadoop.version>2.2.0</hadoop.version>
         <rheem.version>0.2.0</rheem.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>sonatype</id>
+            <name>Sonatype</name>
+            <url>http://repository.sonatype.org/content/groups/public/</url>
+        </repository>
+        <repository>
+            <id>sonatype-snapshot</id>
+            <name>Sonatype Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+    </repositories>
 </project>
