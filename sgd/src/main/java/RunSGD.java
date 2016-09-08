@@ -10,6 +10,7 @@ import org.qcri.rheem.core.util.Tuple;
 import org.qcri.rheem.java.Java;
 import org.qcri.rheem.spark.Spark;
 import org.qcri.rheem.spark.operators.SparkBernoulliSampleOperator;
+import org.qcri.rheem.spark.operators.SparkRandomPartitionSampleOperator;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -27,8 +28,8 @@ public class RunSGD {
     static int datasetSize  = 100827;
     static int features = 123;
 
-    //these are for SGD/mini run to convergence, put < 1 for batch GD
-    static int sampleSize = 6;
+    //these are for SGD/mini run to convergence
+    static int sampleSize = 10;
     static double accuracy = 0.001;
     static int max_iterations = 1000;
 
@@ -74,7 +75,7 @@ public class RunSGD {
 
             DataQuantaBuilder<?, double[]> newWeightsDataset = transformBuilder
                     .sample(sampleSize)
-//                    .<double[]>customOperator(new SparkBernoulliSampleOperator<>(sampleSize, datasetSize, DataSetType.createDefault(double[].class)))
+//                    .<double[]>customOperator(new SparkRandomPartitionSampleOperator<>(sampleSize, datasetSize, DataSetType.createDefault(double[].class)))
 //                    .withOutputClass(double[].class)
                     .map(new ComputeLogisticGradient()).withBroadcast(w, "weights").withName("compute")
                     .reduce(new Sum()).withName("reduce")
