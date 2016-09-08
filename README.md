@@ -1,6 +1,6 @@
 # Rheem examples
 
-This repository contains several simple example apps for [Rheem](http://da.qcri.org/rheem/). All of them are written in Scala and/or Java and can be built with Maven. Please find details about the different apps in the following.
+This repository contains several simple example apps for [Rheem](http://da.qcri.org/rheem/). All of them are written in Scala and/or Java and are either IPython notebooks (with the jupyter-scala kernel) or can be built with Maven. Please find details about the different apps in the following.
 
 ## Wordcount
 
