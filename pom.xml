@@ -15,6 +15,7 @@
       <module>wordcount</module>
       <module>sindy</module>
       <module>pagerank</module>
+        <module>sgd</module>
     </modules>
 
     <!-- Configure project settings here. -->
