@@ -29,7 +29,7 @@ $ java/scala com.github.sekruse.sindy.Sindy <plugins> <JDBC URL> <schema file> [
 
 ## PageRank
 
-This app consumes an RDF triple file, constructs a graph from it, and finally runs a PageRank on that graph. It uses Rheem to easily bring together to different data processing tasks, namely preprocessing and graph analytics, and also makes use of Rheem's `PageRankOperator`.
+This app consumes an RDF triple file, constructs a graph from it, and finally runs a PageRank on that graph. It uses Rheem to easily bring together two different data processing tasks, namely preprocessing and graph analytics, and also makes use of Rheem's `PageRankOperator`.
 
 
 **Usage.** You can run the app via
