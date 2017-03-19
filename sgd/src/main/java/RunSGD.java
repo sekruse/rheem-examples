@@ -24,14 +24,14 @@ import java.util.List;
 public class RunSGD {
 
     // Default parameters.
-    static String relativePath = "src/main/resources/adult.zeros";
+    static String relativePath = "sgd/src/main/resources/adult.zeros";
     static int datasetSize  = 100827;
     static int features = 123;
 
     //these are for SGD/mini run to convergence
     static int sampleSize = 10;
     static double accuracy = 0.001;
-    static int max_iterations = 1000;
+    static int max_iterations = 10;
 
 
     public static void main (String... args) throws MalformedURLException {
@@ -74,9 +74,8 @@ public class RunSGD {
                 weightsBuilder.doWhile(new LoopCondition(accuracy, max_iterations), w -> {
 
             DataQuantaBuilder<?, double[]> newWeightsDataset = transformBuilder
-                    .sample(sampleSize)
-//                    .<double[]>customOperator(new SparkRandomPartitionSampleOperator<>(sampleSize, datasetSize, DataSetType.createDefault(double[].class)))
-//                    .withOutputClass(double[].class)
+                    .sample(sampleSize).withBroadcast(w, "weights").withName("sample")
+//                    .<double[]>customOperator(new SparkRandomPartitionSampleOperator<>(sampleSize, datasetSize, DataSetType.createDefault(double[].class))).withBroadcast(w, "weights").withOutputClass(double[].class)
                     .map(new ComputeLogisticGradient()).withBroadcast(w, "weights").withName("compute")
                     .reduce(new Sum()).withName("reduce")
                     .map(new WeightsUpdate()).withBroadcast(w, "weights").withName("update");
