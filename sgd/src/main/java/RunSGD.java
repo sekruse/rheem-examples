@@ -31,7 +31,7 @@ public class RunSGD {
     //these are for SGD/mini run to convergence
     static int sampleSize = 10;
     static double accuracy = 0.001;
-    static int max_iterations = 10;
+    static int max_iterations = 1000;
 
 
     public static void main (String... args) throws MalformedURLException {
